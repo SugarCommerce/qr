@@ -54,7 +54,7 @@ final class QR {
 	 *
 	 * @since 1.0.0
 	 */
-	private const DEFAULTS = [
+	private const array DEFAULTS = [
 		'module' => 6,
 		'quiet'  => 4,
 		'level'  => null,
