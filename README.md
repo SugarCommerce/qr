@@ -89,6 +89,9 @@ QR::svg( $text, [
 ] );
 ```
 
+A colour is #hex, a name, a colour function such as `rgb()` or `oklch()`, or
+`var(--name)`; anything else throws `InvalidArgumentException`.
+
 The SVG has a `viewBox`, so CSS can scale it to any size without blurring;
 `shape-rendering="crispEdges"` keeps the modules sharp. Keep good contrast and
 the dark modules darker than the ground: many readers do not handle a
@@ -123,17 +126,12 @@ capacity of every version at every level against the standard's table, and
 checks the finders, timing lines, format and version bits against the
 standard's rules.
 
-## Moving from arraypress/wp-qr
+## Security
 
-Nothing changed but the names: every method keeps its signature and its
-answer.
-
-| Was | Now |
-|---|---|
-| `arraypress/wp-qr` | `sugarcommerce/qr` |
-| `ArrayPress\QR\QR` | `SugarCommerce\Qr\QR` |
-| `ArrayPress\QR\Tables`, `ArrayPress\QR\ReedSolomon` | `SugarCommerce\Qr\Tables`, `SugarCommerce\Qr\ReedSolomon` |
-| text domain `arraypress` (the default label, "QR code") | `sugarcommerce` |
+* Keeps the text off the network: the code is made in PHP, with no service, CDN script or image request
+* Escapes the label and the colours inside their attributes, so neither can break out into markup
+* Refuses a colour that is not one (`url(...)`, markup, anything but #hex, a name, a colour function or `var(--name)`), so the picture never fetches an address
+* Refuses text longer than a code holds before encoding any of it, so a huge string costs nothing
 
 ## Requirements
 
