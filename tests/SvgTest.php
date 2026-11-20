@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace SugarCommerce\Qr\Tests;
 
+use InvalidArgumentException;
 use SugarCommerce\Qr\QR;
 use PHPUnit\Framework\TestCase;
 
@@ -83,9 +84,44 @@ final class SvgTest extends TestCase {
 
 		$this->assertStringNotContainsString( '<rect', $clear );
 
-		$hostile = QR::svg( 'HELLO', [ 'dark' => '"/><script>' ] );
+		// The colours CSS names them by all pass.
+		foreach ( [ '#abc', '#abcd', '#1D2327', '#1d2327cc', 'rebeccapurple', 'currentColor', 'transparent', 'rgb(29 35 39 / 50%)', 'rgba(0, 0, 0, .8)', 'hsl(210deg 10% 13%)', 'var(--qr-ink)' ] as $colour ) {
+			$this->assertStringContainsString( 'fill="' . $colour . '"', QR::svg( 'HELLO', [ 'dark' => $colour ] ), $colour );
+		}
+	}
 
-		$this->assertStringNotContainsString( '<script>', $hostile );
+	/**
+	 * A colour is a colour: never markup, and never an address the picture would fetch.
+	 *
+	 * Either would break the promise that the picture asks nobody for
+	 * anything: url() in a fill is a request to that address each time the
+	 * code is shown.
+	 */
+	public function test_a_colour_that_is_not_a_colour_is_refused(): void {
+		$hostile = [
+			'"/><script>',
+			'url(https://tracker.example/p.svg#a)',
+			'URL(//tracker.example/p.svg#a)',
+			'red;background:url(https://tracker.example/)',
+			'rgb(0,0,0) url(https://tracker.example/)',
+			'expression(alert(1))',
+			"#000\n",
+		];
+
+		foreach ( [ 'dark', 'light' ] as $which ) {
+			foreach ( $hostile as $colour ) {
+				try {
+					QR::svg( 'HELLO', [ $which => $colour ] );
+					$this->fail( "{$which}: {$colour} was drawn." );
+				} catch ( InvalidArgumentException $e ) {
+					$this->assertStringContainsString( 'colour', $e->getMessage() );
+				}
+			}
+		}
+
+		$this->expectException( InvalidArgumentException::class );
+
+		QR::data_uri( 'HELLO', [ 'dark' => 'url(https://tracker.example/p.svg#a)' ] );
 	}
 
 	/**

@@ -141,22 +141,25 @@ final class QR {
 	 * }
 	 *
 	 * @return string
-	 * @throws InvalidArgumentException See matrix().
+	 * @throws InvalidArgumentException See matrix(); and when a colour is not
+	 *                                  one (see colour()).
 	 * @since 1.0.0
 	 */
 	public static function svg( string $data, array $args = [] ): string {
 		$args   = array_merge( self::DEFAULTS, $args );
+		$dark   = self::colour( (string) $args['dark'] );
+		$light  = '' === (string) $args['light'] ? '' : self::colour( (string) $args['light'] );
 		$matrix = self::matrix( $data, $args['level'] );
 		$module = max( 1, (int) $args['module'] );
 		$quiet  = max( 0, (int) $args['quiet'] );
 		$across = count( $matrix ) + 2 * $quiet;
 		$label  = $args['label'] ?? __( 'QR code', 'sugarcommerce' );
-		$ground = '' === (string) $args['light'] ? '' : '<rect width="100%" height="100%" fill="' . esc_attr( (string) $args['light'] ) . '"/>';
+		$ground = '' === $light ? '' : '<rect width="100%" height="100%" fill="' . esc_attr( $light ) . '"/>';
 		$path   = '';
 
 		foreach ( $matrix as $y => $row ) {
-			foreach ( $row as $x => $dark ) {
-				if ( $dark ) {
+			foreach ( $row as $x => $on ) {
+				if ( $on ) {
 					$path .= 'M' . ( $x + $quiet ) . ',' . ( $y + $quiet ) . 'h1v1h-1z';
 				}
 			}
@@ -168,7 +171,7 @@ final class QR {
 			$across * $module,
 			esc_attr( (string) $label ),
 			$ground,
-			esc_attr( (string) $args['dark'] ),
+			esc_attr( $dark ),
 			$path
 		);
 	}
@@ -266,5 +269,31 @@ final class QR {
 		}
 
 		return $level;
+	}
+
+	/**
+	 * A colour for a fill, checked to be one.
+	 *
+	 * Escaping keeps a colour inside its attribute, but a fill can also
+	 * name an address -- url(https://…) -- which the browser fetches each
+	 * time the code is shown, and the picture is meant to ask nobody for
+	 * anything. So a colour is taken only in the forms CSS writes colours
+	 * in: #hex, a name (currentColor and transparent among them), a colour
+	 * function of numbers and units, or a custom property.
+	 *
+	 * @param string $colour What was asked for.
+	 *
+	 * @return string
+	 * @throws InvalidArgumentException When it is not a colour.
+	 * @since 1.0.0
+	 */
+	private static function colour( string $colour ): string {
+		$forms = '/^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|[a-z]+|(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([0-9a-z.,% \/+-]*\)|var\(--[a-z0-9_-]+\))$/iD';
+
+		if ( 1 !== preg_match( $forms, $colour ) ) {
+			throw new InvalidArgumentException( 'A QR code colour is #hex, a colour name, a colour function or var(--name).' );
+		}
+
+		return $colour;
 	}
 }
